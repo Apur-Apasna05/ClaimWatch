@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ClaimWatch AI – Fraud Detection</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="layout">
+    <header class="header">
+      <h1 class="logo">ClaimWatch AI</h1>
+      <p class="tagline">Intelligent fraud detection for insurance claims</p>
+    </header>
+
+    <main class="main">
+      <section class="card form-card">
+        <h2>Evaluate claim</h2>
+        <p class="form-desc">Enter claim details to get a fraud probability, anomaly score, and investigation summary.</p>
+        <form id="claim-form" class="claim-form">
+          <div class="form-grid">
+            <label class="field">
+              <span class="label">Claim amount</span>
+              <input type="number" name="claim_amount" id="claim_amount" min="0" step="100" value="5000" required />
+            </label>
+            <label class="field">
+              <span class="label">Policy tenure (days)</span>
+              <input type="number" name="policy_tenure_days" id="policy_tenure_days" min="0" step="30" value="365" required />
+            </label>
+            <label class="field">
+              <span class="label">Number of prior claims</span>
+              <input type="number" name="num_prior_claims" id="num_prior_claims" min="0" value="1" required />
+            </label>
+            <label class="field">
+              <span class="label">Customer age</span>
+              <input type="number" name="customer_age" id="customer_age" min="18" max="120" value="35" required />
+            </label>
+          </div>
+          <button type="submit" class="btn btn-primary" id="submit-btn">Evaluate claim</button>
+        </form>
+      </section>
+
+      <div id="error-message" class="card error-card" role="alert" hidden></div>
+
+      <section id="results-section" class="results-section" hidden>
+        <h2 class="results-title">Assessment results</h2>
+
+        <div class="metrics">
+          <div class="metric-card risk">
+            <span class="metric-label">Fraud probability</span>
+            <span class="metric-value" id="fraud-probability">—</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Anomaly score</span>
+            <span class="metric-value" id="anomaly-score">—</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Anomalous pattern</span>
+            <span class="metric-value" id="is-anomalous">—</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Explanation (top factors)</h3>
+          <div class="table-wrap">
+            <table class="features-table" id="features-table">
+              <thead>
+                <tr>
+                  <th>Feature</th>
+                  <th>Value</th>
+                  <th>SHAP impact</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Investigation summary</h3>
+          <p class="summary-text" id="summary-text"></p>
+        </div>
+
+        <div class="card">
+          <h3>Recommended next actions</h3>
+          <ul class="actions-list" id="actions-list"></ul>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>ClaimWatch AI – Prototype</p>
+    </footer>
+  </div>
+  <script src="js/app.js"></script>
+</body>
+</html>
