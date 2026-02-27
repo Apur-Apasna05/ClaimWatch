@@ -15,28 +15,54 @@
 
     <main class="main">
       <section class="card form-card">
-        <h2>Evaluate claim</h2>
-        <p class="form-desc">Enter claim details to get a fraud probability, anomaly score, and investigation summary.</p>
-        <form id="claim-form" class="claim-form">
+        <h2>Insurance fraud detection</h2>
+        <p class="form-desc">Enter basic claim details to estimate fraud risk, anomaly score, and persona.</p>
+        <form id="insurance-form" class="claim-form">
           <div class="form-grid">
             <label class="field">
               <span class="label">Claim amount</span>
-              <input type="number" name="claim_amount" id="claim_amount" min="0" step="100" value="5000" required />
+              <input type="number" name="claim_amount" id="claim_amount" min="0" step="100" value="5000" />
             </label>
             <label class="field">
               <span class="label">Policy tenure (days)</span>
-              <input type="number" name="policy_tenure_days" id="policy_tenure_days" min="0" step="30" value="365" required />
+              <input type="number" name="policy_tenure_days" id="policy_tenure_days" min="0" step="30" value="365" />
             </label>
             <label class="field">
               <span class="label">Number of prior claims</span>
-              <input type="number" name="num_prior_claims" id="num_prior_claims" min="0" value="1" required />
+              <input type="number" name="num_prior_claims" id="num_prior_claims" min="0" value="1" />
             </label>
             <label class="field">
               <span class="label">Customer age</span>
-              <input type="number" name="customer_age" id="customer_age" min="18" max="120" value="35" required />
+              <input type="number" name="customer_age" id="customer_age" min="18" max="120" value="35" />
             </label>
           </div>
-          <button type="submit" class="btn btn-primary" id="submit-btn">Evaluate claim</button>
+
+          <button type="submit" class="btn btn-primary" id="insurance-submit">Evaluate insurance claim</button>
+        </form>
+      </section>
+
+      <section class="card form-card">
+        <h2>Fake job post fraud detection</h2>
+        <p class="form-desc">
+          Upload a job posting file or paste the text to detect fake job fraud and highlight risky keywords.
+        </p>
+        <form id="job-form" class="claim-form" enctype="multipart/form-data">
+          <div class="field">
+            <span class="label">Job posting file (PDF / TXT / DOCX / Image)</span>
+            <input type="file" id="job_file" name="file" accept=".pdf,.txt,.docx,image/*" />
+          </div>
+
+          <div class="field">
+            <span class="label">Or paste job posting text</span>
+            <textarea
+              id="job_text"
+              name="job_text"
+              rows="6"
+              placeholder="Paste the full job description or text extracted from the posting..."
+            ></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary" id="job-submit">Evaluate job posting</button>
         </form>
       </section>
 
@@ -58,6 +84,12 @@
             <span class="metric-label">Anomalous pattern</span>
             <span class="metric-value" id="is-anomalous">—</span>
           </div>
+          <div class="metric-card">
+            <span class="metric-label">Fraud persona</span>
+            <span class="metric-value">
+              <span id="fraud-persona" class="persona-badge persona-neutral">—</span>
+            </span>
+          </div>
         </div>
 
         <div class="card">
@@ -76,6 +108,11 @@
           </div>
         </div>
 
+        <div class="card" id="keywords-card" hidden>
+          <h3>Important keywords (job fraud)</h3>
+          <ul class="actions-list" id="keywords-list"></ul>
+        </div>
+
         <div class="card">
           <h3>Investigation summary</h3>
           <p class="summary-text" id="summary-text"></p>
@@ -84,6 +121,13 @@
         <div class="card">
           <h3>Recommended next actions</h3>
           <ul class="actions-list" id="actions-list"></ul>
+        </div>
+
+        <div class="card" id="feedback-card" hidden>
+          <h3>Feedback</h3>
+          <p class="summary-text">Was this prediction accurate?</p>
+          <button type="button" class="btn" id="feedback-yes">Yes</button>
+          <button type="button" class="btn" id="feedback-no">No</button>
         </div>
       </section>
     </main>

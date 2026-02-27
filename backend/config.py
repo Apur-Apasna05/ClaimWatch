@@ -13,6 +13,7 @@ class Settings:
     base_dir: Path = BASE_DIR
     model_dir: Path = BASE_DIR / "backend" / "models" / "artifacts"
     data_path: Path = BASE_DIR / "data" / "claims_sample.csv"
+    job_data_path: Path = BASE_DIR / "data" / "job_posts_sample.csv"
 
     use_openai_summaries: bool = os.getenv("USE_OPENAI_SUMMARIES", "false").lower() == "true"
     openai_api_key: str | None = os.getenv("OPENAI_API_KEY")

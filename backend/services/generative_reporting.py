@@ -21,27 +21,28 @@ def generate_template_summary(
         else "LOW"
     )
 
+    # Keep summary to 2–3 short sentences.
     summary_lines: List[str] = []
     summary_lines.append(
-        f"The claim is assessed as {risk_level} fraud risk "
-        f"with an estimated fraud probability of {fraud_probability:.2f}."
-    )
-    summary_lines.append(
-        f"The anomaly detector returned a score of {anomaly_score:.3f}, "
-        "where lower scores indicate more unusual patterns."
+        f"Overall this is assessed as {risk_level} fraud risk "
+        f"(estimated fraud probability {fraud_probability:.2f})."
     )
 
-    if top_features:
-        feature_descriptions = []
-        for f in top_features:
-            direction = "increases" if f["shap_value"] > 0 else "decreases"
-            feature_descriptions.append(
-                f"{f['feature']} (value={f['value']:.2f}, impact={direction} fraud risk)"
-            )
-        joined = "; ".join(feature_descriptions)
+    # Only mention anomaly score when it's meaningful.
+    if anomaly_score != 0.0:
         summary_lines.append(
-            f"Key factors influencing the decision include: {joined}."
+            f"Anomaly score is {anomaly_score:.3f} (lower means more unusual behaviour)."
         )
+
+    if top_features:
+        # Call out only the top 2 drivers.
+        top2 = top_features[:2]
+        parts: List[str] = []
+        for f in top2:
+            direction = "increases" if f["shap_value"] > 0 else "reduces"
+            parts.append(f"{f['feature']} {direction} risk")
+        joined = ", ".join(parts)
+        summary_lines.append(f"Key drivers include: {joined}.")
 
     summary = " ".join(summary_lines)
 

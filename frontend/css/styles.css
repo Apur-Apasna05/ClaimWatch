@@ -218,6 +218,38 @@ body {
   font-weight: 600;
 }
 
+/* Persona badge */
+.persona-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.persona-low {
+  background: rgba(63, 185, 80, 0.18);
+  color: var(--success);
+}
+
+.persona-medium {
+  background: rgba(210, 153, 34, 0.18);
+  color: var(--warning);
+}
+
+.persona-high {
+  background: rgba(248, 81, 73, 0.18);
+  color: var(--danger);
+}
+
+.persona-neutral {
+  background: rgba(88, 166, 255, 0.12);
+  color: var(--accent);
+}
+
 /* Table */
 .table-wrap {
   overflow-x: auto;
