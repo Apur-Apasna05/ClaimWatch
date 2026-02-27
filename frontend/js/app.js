@@ -3,6 +3,8 @@
 
   var insuranceForm = document.getElementById("insurance-form");
   var insuranceSubmitBtn = document.getElementById("insurance-submit");
+  var insuranceCsvForm = document.getElementById("insurance-csv-form");
+  var insuranceCsvSubmitBtn = document.getElementById("insurance-csv-submit");
   var jobForm = document.getElementById("job-form");
   var jobSubmitBtn = document.getElementById("job-submit");
   var errorEl = document.getElementById("error-message");
@@ -10,8 +12,14 @@
   var feedbackCard = document.getElementById("feedback-card");
   var feedbackYes = document.getElementById("feedback-yes");
   var feedbackNo = document.getElementById("feedback-no");
+  var feedbackNote = document.getElementById("feedback-note");
   var lastRequestPayload = null;
   var lastPrediction = null;
+
+  // Chart.js instances
+  var fraudGaugeChart = null;
+  var anomalyBarChart = null;
+  var shapBarChart = null;
 
   function showError(message) {
     errorEl.textContent = message;
@@ -44,12 +52,28 @@
 
     lastPrediction = data;
 
-    var prob = data.fraud_probability;
+    var prob = data.fraud_probability || 0;
     var probPct = (prob * 100).toFixed(1);
     document.getElementById("fraud-probability").textContent = probPct + "%";
 
-    document.getElementById("anomaly-score").textContent = data.anomaly_score.toFixed(3);
-    document.getElementById("is-anomalous").textContent = data.is_anomalous ? "Yes" : "No";
+    var anomaly =
+      data.fraud_type === "insurance" && data.anomaly_score != null
+        ? data.anomaly_score
+        : 0;
+    document.getElementById("anomaly-score").textContent =
+      data.fraud_type === "insurance" ? anomaly.toFixed(3) : "N/A";
+    var anomalousLabel =
+      data.fraud_type === "insurance"
+        ? data.is_anomalous === true
+          ? "Yes"
+          : data.is_anomalous === false
+          ? "No"
+          : "N/A"
+        : "N/A";
+    document.getElementById("is-anomalous").textContent = anomalousLabel;
+
+    // Update charts
+    renderCharts(data, prob, anomaly, anomalousLabel);
 
     // Fraud persona badge
     var personaEl = document.getElementById("fraud-persona");
@@ -90,7 +114,20 @@
 
     var tbody = document.querySelector("#features-table tbody");
     tbody.innerHTML = "";
-    (data.top_features || []).forEach(function (f) {
+    var rowsSource = (data.top_features || []).slice();
+
+    // For job fraud, fall back to important_keywords for explanation table
+    if (data.fraud_type === "job_fraud" && rowsSource.length === 0) {
+      rowsSource = (data.important_keywords || []).map(function (kw) {
+        return {
+          feature: kw.keyword,
+          value: 1,
+          shap_value: kw.score,
+        };
+      });
+    }
+
+    rowsSource.forEach(function (f) {
       var tr = document.createElement("tr");
       var shapClass = f.shap_value > 0 ? "shap-positive" : "shap-negative";
       tr.innerHTML =
@@ -240,6 +277,182 @@
       });
   });
 
+  // Insurance CSV bulk submit
+  insuranceCsvForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+
+    var fileInput = document.getElementById("insurance_csv_file");
+    var file = fileInput.files[0] || null;
+    if (!file) {
+      showError("Please select a CSV file first.");
+      return;
+    }
+
+    var formData = new FormData();
+    formData.append("file", file);
+
+    lastRequestPayload = { bulk_csv_file: file.name };
+    setLoading(insuranceCsvSubmitBtn, true, "Upload & evaluate CSV");
+
+    fetch("/predict-from-csv", {
+      method: "POST",
+      body: formData,
+    })
+      .then(function (res) {
+        if (!res.ok) {
+          return res.text().then(function (t) {
+            throw new Error("API error " + res.status + ": " + (t || res.statusText));
+          });
+        }
+        return res.json();
+      })
+      .then(function (items) {
+        if (!Array.isArray(items) || items.length === 0) {
+          showError("No predictions returned for CSV.");
+          return;
+        }
+        // For now, show the last prediction in the standard panel.
+        renderResults(items[items.length - 1]);
+      })
+      .catch(function (err) {
+        showError(err.message || "CSV upload request failed.");
+      })
+      .finally(function () {
+        setLoading(insuranceCsvSubmitBtn, false, "Upload & evaluate CSV");
+      });
+  });
+
+  function renderCharts(data, prob, anomaly, anomalousLabel) {
+    var gaugeCanvas = document.getElementById("fraudGauge");
+    var anomalyCanvas = document.getElementById("anomalyBar");
+    var shapCanvas = document.getElementById("shapBar");
+
+    if (typeof Chart === "undefined") {
+      return;
+    }
+
+    // Destroy existing charts
+    if (fraudGaugeChart) fraudGaugeChart.destroy();
+    if (anomalyBarChart) anomalyBarChart.destroy();
+    if (shapBarChart) shapBarChart.destroy();
+
+    // Fraud gauge (doughnut)
+    if (gaugeCanvas) {
+      var riskColor;
+      if (prob < 0.3) riskColor = "#22c55e";
+      else if (prob < 0.7) riskColor = "#eab308";
+      else riskColor = "#f97373";
+
+      fraudGaugeChart = new Chart(gaugeCanvas.getContext("2d"), {
+        type: "doughnut",
+        data: {
+          labels: ["Fraud risk", "Safe"],
+          datasets: [
+            {
+              data: [prob, Math.max(0, 1 - prob)],
+              backgroundColor: [riskColor, "rgba(31,41,55,0.8)"],
+              borderWidth: 0,
+            },
+          ],
+        },
+        options: {
+          cutout: "70%",
+          plugins: {
+            legend: { display: false },
+          },
+          animation: {
+            animateRotate: true,
+            duration: 700,
+          },
+        },
+      });
+    }
+
+    // Anomaly bar
+    if (anomalyCanvas) {
+      var anomalyColor =
+        anomalousLabel === "Yes" ? "#f97373" : anomalousLabel === "No" ? "#22c55e" : "#4b5563";
+
+      anomalyBarChart = new Chart(anomalyCanvas.getContext("2d"), {
+        type: "bar",
+        data: {
+          labels: ["Anomaly score"],
+          datasets: [
+            {
+              label: "Anomaly score",
+              data: [anomaly],
+              backgroundColor: anomalyColor,
+            },
+          ],
+        },
+        options: {
+          indexAxis: "y",
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              ticks: { color: "#9ca3af" },
+              grid: { color: "rgba(55,65,81,0.4)" },
+            },
+            y: {
+              ticks: { color: "#9ca3af" },
+              grid: { display: false },
+            },
+          },
+          animation: { duration: 600 },
+        },
+      });
+    }
+
+    // SHAP bar chart
+    if (shapCanvas && (data.top_features || []).length > 0) {
+      var sorted = (data.top_features || [])
+        .slice()
+        .sort(function (a, b) {
+          return Math.abs(b.shap_value) - Math.abs(a.shap_value);
+        })
+        .slice(0, 5);
+
+      var labels = sorted.map(function (f) {
+        return formatFeatureName(f.feature);
+      });
+      var values = sorted.map(function (f) {
+        return f.shap_value;
+      });
+      var colors = sorted.map(function (f) {
+        return f.shap_value > 0 ? "#f97373" : "#22c55e";
+      });
+
+      shapBarChart = new Chart(shapCanvas.getContext("2d"), {
+        type: "bar",
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: "SHAP impact",
+              data: values,
+              backgroundColor: colors,
+            },
+          ],
+        },
+        options: {
+          indexAxis: "y",
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              ticks: { color: "#9ca3af" },
+              grid: { color: "rgba(55,65,81,0.4)" },
+            },
+            y: {
+              ticks: { color: "#9ca3af" },
+              grid: { display: false },
+            },
+          },
+          animation: { duration: 700 },
+        },
+      });
+    }
+  }
+
   function sendFeedback(answer) {
     if (!lastPrediction || !lastRequestPayload) {
       return;
@@ -260,9 +473,17 @@
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
-    }).catch(function () {
-      // Feedback failures are non-fatal for users
-    });
+    })
+      .then(function () {
+        if (feedbackNote) {
+          feedbackNote.hidden = false;
+        }
+        if (feedbackYes) feedbackYes.disabled = true;
+        if (feedbackNo) feedbackNo.disabled = true;
+      })
+      .catch(function () {
+        // Feedback failures are non-fatal for users
+      });
   }
 
   if (feedbackYes && feedbackNo) {

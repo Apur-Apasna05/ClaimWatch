@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.responses import RedirectResponse
@@ -23,12 +23,15 @@ from backend.schemas import (
 from backend.services.explainability import ShapExplainerArtifacts, build_tree_explainer
 from backend.services.model_router import init_router, route_prediction
 from backend.services.feedback_service import log_feedback, should_retrain
+from backend.services.insurance_service import predict_insurance
 from backend.utils.file_processor import (
     extract_text_from_pdf,
     extract_text_from_txt,
     extract_text_from_docx,
     extract_text_from_image,
 )
+
+import pandas as pd
 
 
 app = FastAPI(title=settings.project_name)
@@ -148,4 +151,83 @@ def feedback(req: FeedbackRequest) -> FeedbackResponse:
     log_feedback(req)
     retrain = should_retrain()
     return FeedbackResponse(status="logged", retrain_triggered=retrain)
+
+
+@app.post("/predict-from-csv", response_model=List[PredictionResponse])
+async def predict_from_csv(
+    file: UploadFile = File(...),
+) -> List[PredictionResponse]:
+    """
+    Bulk insurance fraud prediction from a CSV file.
+
+    CSV MUST contain columns:
+    - claim_amount
+    - policy_tenure_days
+    - num_prior_claims
+    - customer_age
+    """
+    if fraud_artifacts is None or anomaly_artifacts is None or shap_artifacts is None:
+        _load_artifacts()
+
+    try:
+        df = pd.read_csv(file.file)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Could not read CSV: {exc}")
+
+    required = [
+        "claim_amount",
+        "policy_tenure_days",
+        "num_prior_claims",
+        "customer_age",
+    ]
+    missing = [c for c in required if c not in df.columns]
+
+    # If canonical columns are missing, try to map common Kaggle-style names
+    if missing:
+        mapping: Dict[str, str] = {}
+        if "total_claim_amount" in df.columns:
+            mapping["claim_amount"] = "total_claim_amount"
+        if "months_as_customer" in df.columns:
+            df["policy_tenure_days"] = df["months_as_customer"] * 30
+            mapping["policy_tenure_days"] = "policy_tenure_days"
+        if "number_of_open_claims" in df.columns:
+            mapping["num_prior_claims"] = "number_of_open_claims"
+        if "age" in df.columns:
+            mapping["customer_age"] = "age"
+
+        still_missing = [c for c in required if c not in df.columns and c not in mapping]
+
+        # If we still can't map some, create them with neutral defaults (0) so the model can run.
+        # This is primarily for demo/hackathon scenarios where the CSV is partially aligned.
+        df_mapped = pd.DataFrame()
+        for col in required:
+            if col in df.columns:
+                df_mapped[col] = df[col]
+            elif col in mapping:
+                source = mapping[col]
+                df_mapped[col] = df[source]
+            else:
+                # Column not present anywhere: fill with zeros
+                df_mapped[col] = 0
+
+        df = df_mapped
+
+    results: List[PredictionResponse] = []
+    for _, row in df.iterrows():
+        claim = ClaimInput(
+            fraud_type="insurance",
+            claim_amount=float(row["claim_amount"]),
+            policy_tenure_days=int(row["policy_tenure_days"]),
+            num_prior_claims=int(row["num_prior_claims"]),
+            customer_age=int(row["customer_age"]),
+        )
+        pred = predict_insurance(
+            claim,
+            fraud_artifacts=fraud_artifacts,
+            anomaly_artifacts=anomaly_artifacts,
+            shap_artifacts=shap_artifacts,
+        )
+        results.append(pred)
+
+    return results
 

@@ -3,18 +3,61 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ClaimWatch AI – Fraud Detection</title>
+  <title>ClaimWatch AI – Fraud Intelligence Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <div class="layout">
-    <header class="header">
-      <h1 class="logo">ClaimWatch AI</h1>
-      <p class="tagline">Intelligent fraud detection for insurance claims</p>
+  <div class="app-shell">
+    <header class="nav">
+      <div class="nav-left">
+        <div class="nav-logo-mark">CW</div>
+        <div class="nav-brand">
+          <span class="nav-title">ClaimWatch AI</span>
+          <span class="nav-subtitle">Fraud Intelligence Platform</span>
+        </div>
+      </div>
+      <nav class="nav-links">
+        <a href="#hero">Overview</a>
+        <a href="#insurance-section">Insurance Fraud</a>
+        <a href="#job-section">Job Fraud</a>
+        <a href="#results-section">Dashboard</a>
+      </nav>
     </header>
 
-    <main class="main">
-      <section class="card form-card">
+    <section id="hero" class="hero">
+      <div class="hero-content">
+        <h1>AI-native fraud detection for modern insurers.</h1>
+        <p>
+          ClaimWatch AI combines predictive models, anomaly detection, and explainable AI to surface high-risk claims and
+          fake job postings in seconds.
+        </p>
+        <div class="hero-actions">
+          <a href="#insurance-section" class="btn btn-primary">Run an insurance claim</a>
+          <a href="#job-section" class="btn btn-outline">Analyze a job posting</a>
+        </div>
+        <div class="hero-meta">
+          <span>Real-time scoring</span>
+          <span>Explainable decisions</span>
+          <span>Analyst-ready summaries</span>
+        </div>
+      </div>
+      <div class="hero-card">
+        <div class="hero-card-header">
+          <span class="badge badge-live"></span>
+          Live risk console
+        </div>
+        <p class="hero-card-copy">
+          Upload a claim file or job posting and get back a ranked risk score, key drivers, and recommended actions.
+        </p>
+      </div>
+    </section>
+
+    <main class="main layout">
+      <section id="insurance-section" class="card form-card">
         <h2>Insurance fraud detection</h2>
         <p class="form-desc">Enter basic claim details to estimate fraud risk, anomaly score, and persona.</p>
         <form id="insurance-form" class="claim-form">
@@ -42,6 +85,21 @@
       </section>
 
       <section class="card form-card">
+        <h2>Bulk insurance fraud detection (CSV)</h2>
+        <p class="form-desc">
+          Upload a CSV file of claims to score them in bulk. The file must contain:
+          <code>claim_amount, policy_tenure_days, num_prior_claims, customer_age</code>.
+        </p>
+        <form id="insurance-csv-form" class="claim-form" enctype="multipart/form-data">
+          <div class="field">
+            <span class="label">Claims CSV</span>
+            <input type="file" id="insurance_csv_file" name="file" accept=".csv" />
+          </div>
+          <button type="submit" class="btn btn-primary" id="insurance-csv-submit">Upload &amp; evaluate CSV</button>
+        </form>
+      </section>
+
+      <section id="job-section" class="card form-card">
         <h2>Fake job post fraud detection</h2>
         <p class="form-desc">
           Upload a job posting file or paste the text to detect fake job fraud and highlight risky keywords.
@@ -92,6 +150,20 @@
           </div>
         </div>
 
+        <div class="card card-visual">
+          <h3>Risk visuals</h3>
+          <div class="visual-grid">
+            <div class="visual-item">
+              <h4>Fraud probability</h4>
+              <canvas id="fraudGauge"></canvas>
+            </div>
+            <div class="visual-item">
+              <h4>Anomaly score</h4>
+              <canvas id="anomalyBar"></canvas>
+            </div>
+          </div>
+        </div>
+
         <div class="card">
           <h3>Explanation (top factors)</h3>
           <div class="table-wrap">
@@ -128,6 +200,7 @@
           <p class="summary-text">Was this prediction accurate?</p>
           <button type="button" class="btn" id="feedback-yes">Yes</button>
           <button type="button" class="btn" id="feedback-no">No</button>
+          <p class="summary-text feedback-note" id="feedback-note" hidden>Thanks, your feedback was recorded.</p>
         </div>
       </section>
     </main>
