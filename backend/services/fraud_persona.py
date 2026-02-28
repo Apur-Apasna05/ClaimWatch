@@ -38,7 +38,8 @@ def classify_fraud_persona(
     is_medium_risk = 0.4 <= fraud_probability < 0.8
     is_low_risk = fraud_probability < 0.4
 
-    is_strong_anomaly = anomaly_score < -0.4
+    # anomaly_score is 0-10 (higher = more anomalous)
+    is_strong_anomaly = anomaly_score >= 7.0
 
     # 1. Repeat offender pattern: very high fraud risk and many prior claims.
     if is_high_risk and num_prior >= 3:

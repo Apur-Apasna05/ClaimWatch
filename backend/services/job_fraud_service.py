@@ -32,10 +32,22 @@ def predict_job_fraud(
     for word, score in top_keywords(job_artifacts, text, top_k=10):
         keywords.append(KeywordImportance(keyword=word, score=score))
 
-    # Reuse the same summary generator with no anomaly score / features.
+    # Anomaly score 0-10 aligned with fraud probability (so they match and don't contradict).
+    anomaly_0_10 = round(float(prob) * 10.0, 2)
+    anomaly_0_10 = max(0.0, min(10.0, anomaly_0_10))
+    is_anomalous = prob >= 0.5
+
+    # Simple persona for job fraud so we never return N/A.
+    if prob >= 0.7:
+        fraud_persona_label = "High risk – Likely fake posting"
+    elif prob >= 0.4:
+        fraud_persona_label = "Medium risk – Needs review"
+    else:
+        fraud_persona_label = "Low risk – Normal posting"
+
     summary, actions = generate_template_summary(
         fraud_probability=prob,
-        anomaly_score=0.0,
+        anomaly_score=anomaly_0_10,
         top_features=[],
     )
 
@@ -45,9 +57,9 @@ def predict_job_fraud(
         fraud_type="job_fraud",
         fraud_probability=prob,
         trust_score=trust,
-        anomaly_score=None,
-        is_anomalous=None,
-        fraud_persona=None,
+        anomaly_score=anomaly_0_10,
+        is_anomalous=is_anomalous,
+        fraud_persona=fraud_persona_label,
         top_features=[],
         important_keywords=keywords,
         summary=summary,

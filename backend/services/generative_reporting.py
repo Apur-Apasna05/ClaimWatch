@@ -28,10 +28,10 @@ def generate_template_summary(
         f"(estimated fraud probability {fraud_probability:.2f})."
     )
 
-    # Only mention anomaly score when it's meaningful.
-    if anomaly_score != 0.0:
+    # Anomaly score is 0-10 (higher = more anomalous).
+    if anomaly_score is not None and anomaly_score > 0:
         summary_lines.append(
-            f"Anomaly score is {anomaly_score:.3f} (lower means more unusual behaviour)."
+            f"Anomaly score is {anomaly_score:.1f}/10 (higher means more unusual behaviour)."
         )
 
     if top_features:

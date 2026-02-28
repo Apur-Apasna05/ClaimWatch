@@ -43,8 +43,12 @@ class KeywordImportance(BaseModel):
 class PredictionResponse(BaseModel):
     fraud_type: FraudType
     fraud_probability: float
+    """Supervised classifier output in [0, 1]."""
+    fused_risk: Optional[float] = None
+    """Fused risk in [0, 1] (supervised + anomaly); use for decisions. Insurance only."""
     trust_score: Optional[float] = None
     anomaly_score: Optional[float] = None
+    """Anomaly on 0–10 scale for display (insurance: from normalized anomaly; job: derived)."""
     is_anomalous: Optional[bool] = None
     fraud_persona: Optional[str] = None
     top_features: List[FeatureImportance] = []

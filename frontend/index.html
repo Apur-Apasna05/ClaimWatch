@@ -127,12 +127,23 @@
       <div id="error-message" class="card error-card" role="alert" hidden></div>
 
       <section id="results-section" class="results-section" hidden>
-        <h2 class="results-title">Assessment results</h2>
+        <div class="results-header">
+          <h2 class="results-title">Assessment results</h2>
+          <p class="results-subtitle">Risk metrics, explanation, and recommended actions</p>
+        </div>
 
+        <div class="risk-badge-wrap">
+          <span class="metric-label">Risk level</span>
+          <span id="risk-level-badge" class="risk-level-badge risk-unknown">—</span>
+        </div>
         <div class="metrics">
           <div class="metric-card risk">
             <span class="metric-label">Fraud probability</span>
             <span class="metric-value" id="fraud-probability">—</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Trust score</span>
+            <span class="metric-value metric-trust" id="trust-score">—</span>
           </div>
           <div class="metric-card">
             <span class="metric-label">Anomaly score</span>

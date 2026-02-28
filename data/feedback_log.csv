@@ -12,3 +12,6 @@ timestamp,fraud_type,predicted_label,predicted_probability,user_feedback,input_p
 2026-02-27T16:46:05.393774,insurance,fraud,0.715,no,"{'fraud_type': 'insurance', 'claim_amount': 5000, 'policy_tenure_days': 30, 'num_prior_claims': 10, 'customer_age': 55}"
 2026-02-27T16:51:31.184363,insurance,legit,0.05232558139534884,yes,"{'fraud_type': 'insurance', 'claim_amount': 5000, 'policy_tenure_days': 60, 'num_prior_claims': 1, 'customer_age': 35}"
 2026-02-27T16:52:49.748409,insurance,legit,0.05232558139534884,yes,"{'fraud_type': 'insurance', 'claim_amount': 5000, 'policy_tenure_days': 60, 'num_prior_claims': 1, 'customer_age': 35}"
+2026-02-27T17:17:45.893167,insurance,fraud,0.509828922061201,yes,{'bulk_csv_file': 'Correct_Insurance_Fraud_Input.csv'}
+2026-02-28T05:35:22.730314,insurance,fraud,0.509828922061201,yes,{'bulk_csv_file': 'Correct_Insurance_Fraud_Input.csv'}
+2026-02-28T05:35:33.647182,insurance,legit,0.057325581395348844,no,"{'fraud_type': 'insurance', 'claim_amount': 5000, 'policy_tenure_days': 30, 'num_prior_claims': 1, 'customer_age': 35}"

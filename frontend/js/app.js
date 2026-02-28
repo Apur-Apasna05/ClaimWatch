@@ -36,6 +36,11 @@
     btn.textContent = loading ? "Evaluating…" : idleText;
   }
 
+  function safeNum(x) {
+    var n = Number(x);
+    return (typeof n === "number" && !Number.isNaN(n)) ? n : 0;
+  }
+
   function formatFeatureName(name) {
     return name
       .split("_")
@@ -52,28 +57,44 @@
 
     lastPrediction = data;
 
-    var prob = data.fraud_probability || 0;
-    var probPct = (prob * 100).toFixed(1);
+    var prob = safeNum(data.fraud_probability);
+    var fused = data.fused_risk != null && !Number.isNaN(Number(data.fused_risk))
+      ? Number(data.fused_risk) : null;
+    var primaryRisk = fused != null ? fused : prob;
+    var probPct = (primaryRisk * 100).toFixed(1);
     document.getElementById("fraud-probability").textContent = probPct + "%";
 
-    var anomaly =
-      data.fraud_type === "insurance" && data.anomaly_score != null
-        ? data.anomaly_score
-        : 0;
+    var trust = data.trust_score != null && !Number.isNaN(Number(data.trust_score))
+      ? (Number(data.trust_score) * 100).toFixed(1) + "%" : "—";
+    var trustEl = document.getElementById("trust-score");
+    if (trustEl) trustEl.textContent = trust;
+
+    var riskBadge = document.getElementById("risk-level-badge");
+    if (riskBadge) {
+      riskBadge.classList.remove("risk-low", "risk-medium", "risk-high", "risk-unknown");
+      if (primaryRisk < 0.3) {
+        riskBadge.textContent = "Low risk";
+        riskBadge.classList.add("risk-low");
+      } else if (primaryRisk < 0.7) {
+        riskBadge.textContent = "Medium risk";
+        riskBadge.classList.add("risk-medium");
+      } else {
+        riskBadge.textContent = "High risk";
+        riskBadge.classList.add("risk-high");
+      }
+    }
+
+    // Anomaly score is always 0-10 for both insurance and job fraud (aligned with fraud probability).
+    var anomaly = (data.anomaly_score != null && !Number.isNaN(Number(data.anomaly_score)))
+      ? Number(data.anomaly_score) : 0;
     document.getElementById("anomaly-score").textContent =
-      data.fraud_type === "insurance" ? anomaly.toFixed(3) : "N/A";
+      anomaly.toFixed(1) + " / 10";
     var anomalousLabel =
-      data.fraud_type === "insurance"
-        ? data.is_anomalous === true
-          ? "Yes"
-          : data.is_anomalous === false
-          ? "No"
-          : "N/A"
-        : "N/A";
+      data.is_anomalous === true ? "Yes" : data.is_anomalous === false ? "No" : "—";
     document.getElementById("is-anomalous").textContent = anomalousLabel;
 
-    // Update charts
-    renderCharts(data, prob, anomaly, anomalousLabel);
+    // Update charts (use fused risk when present for consistency)
+    renderCharts(data, primaryRisk, anomaly, anomalousLabel);
 
     // Fraud persona badge
     var personaEl = document.getElementById("fraud-persona");
@@ -84,13 +105,13 @@
       personaEl.classList.remove("persona-low", "persona-medium", "persona-high", "persona-neutral");
 
       var lower = persona.toLowerCase();
-      if (lower.indexOf("low risk") !== -1 || lower.indexOf("normal") !== -1) {
+      if (lower.indexOf("low risk") !== -1 || lower.indexOf("normal") !== -1 || lower.indexOf("normal posting") !== -1) {
         personaEl.classList.add("persona-low");
-      } else if (lower.indexOf("opportunistic") !== -1 || lower.indexOf("policy") !== -1) {
+      } else if (lower.indexOf("high risk") !== -1 || lower.indexOf("opportunistic") !== -1 || lower.indexOf("policy") !== -1 || lower.indexOf("likely fake") !== -1) {
         personaEl.classList.add("persona-high");
       } else if (lower.indexOf("repeat") !== -1 || lower.indexOf("financial") !== -1) {
         personaEl.classList.add("persona-high");
-      } else if (lower.indexOf("needs analyst review") !== -1) {
+      } else if (lower.indexOf("medium risk") !== -1 || lower.indexOf("needs review") !== -1 || lower.indexOf("needs analyst review") !== -1) {
         personaEl.classList.add("persona-medium");
       } else {
         personaEl.classList.add("persona-neutral");
@@ -104,7 +125,7 @@
     if (data.fraud_type === "job_fraud" && (data.important_keywords || []).length > 0) {
       (data.important_keywords || []).forEach(function (kw) {
         var li = document.createElement("li");
-        li.textContent = kw.keyword + " (" + kw.score.toFixed(3) + ")";
+        li.textContent = (kw.keyword || "") + " (" + safeNum(kw.score).toFixed(3) + ")";
         keywordsList.appendChild(li);
       });
       keywordsCard.hidden = false;
@@ -129,16 +150,17 @@
 
     rowsSource.forEach(function (f) {
       var tr = document.createElement("tr");
-      var shapClass = f.shap_value > 0 ? "shap-positive" : "shap-negative";
+      var sv = safeNum(f.shap_value);
+      var shapClass = sv > 0 ? "shap-positive" : "shap-negative";
       tr.innerHTML =
         "<td>" +
-        formatFeatureName(f.feature) +
+        formatFeatureName(String(f.feature || "")) +
         "</td><td>" +
-        Number(f.value).toFixed(2) +
+        safeNum(f.value).toFixed(2) +
         "</td><td class=\"" +
         shapClass +
         "\">" +
-        f.shap_value.toFixed(4) +
+        sv.toFixed(4) +
         "</td>";
       tbody.appendChild(tr);
     });
@@ -368,8 +390,9 @@
       });
     }
 
-    // Anomaly bar
+    // Anomaly bar (only meaningful for insurance; support negative scores)
     if (anomalyCanvas) {
+      var anomalyNum = safeNum(anomaly);
       var anomalyColor =
         anomalousLabel === "Yes" ? "#f97373" : anomalousLabel === "No" ? "#22c55e" : "#4b5563";
 
@@ -380,7 +403,7 @@
           datasets: [
             {
               label: "Anomaly score",
-              data: [anomaly],
+              data: [anomalyNum],
               backgroundColor: anomalyColor,
             },
           ],
@@ -390,6 +413,8 @@
           plugins: { legend: { display: false } },
           scales: {
             x: {
+              min: 0,
+              max: 10,
               ticks: { color: "#9ca3af" },
               grid: { color: "rgba(55,65,81,0.4)" },
             },
@@ -416,7 +441,7 @@
         return formatFeatureName(f.feature);
       });
       var values = sorted.map(function (f) {
-        return f.shap_value;
+        return safeNum(f.shap_value);
       });
       var colors = sorted.map(function (f) {
         return f.shap_value > 0 ? "#f97373" : "#22c55e";
